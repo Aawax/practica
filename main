@@ -1,0 +1,133 @@
+import sys
+from PyQt5 import uic
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog
+from PyQt5.QtCore import Qt
+from classes import Medication, PharmacyData
+
+class EditDialog(QDialog):
+    def __init__(self, parent=None, medication=None):
+        super().__init__(parent)
+        uic.loadUi('edit_form.ui', self)
+        
+        if medication:
+            self.nameEdit.setText(medication.name)
+            self.manufacturerEdit.setText(medication.manufacturer)
+            self.quantityEdit.setText(medication.quantity)
+            self.priceEdit.setText(medication.price)
+        
+        self.saveButton.clicked.connect(self.accept)
+        self.cancelButton.clicked.connect(self.reject)
+    
+    def get_data(self):
+        return Medication(
+            med_id="0",
+            name=self.nameEdit.text(),
+            manufacturer=self.manufacturerEdit.text(),
+            quantity=self.quantityEdit.text(),
+            price=self.priceEdit.text()
+        )
+
+class PharmacyApp(QMainWindow):
+    SORT_ATTRIBUTE = "price"
+    
+    def __init__(self):
+        super().__init__()
+        uic.loadUi('pharmacy.ui', self)
+        self.data = PharmacyData()
+        
+        self.addButton.clicked.connect(self.add_record)
+        self.editButton.clicked.connect(self.edit_record)
+        self.deleteButton.clicked.connect(self.delete_record)
+        self.loadButton.clicked.connect(self.load_from_file)
+        self.searchButton.clicked.connect(self.search_record)
+        self.sortButton.clicked.connect(self.sort_records)
+        
+        self.load_from_file()
+    
+    def update_table(self, medications=None):
+        if medications is None:
+            medications = self.data.medications
+            
+        self.tableWidget.setRowCount(len(medications))
+        for row, med in enumerate(medications):
+            self.tableWidget.setItem(row, 0, QTableWidgetItem(med.id))
+            self.tableWidget.setItem(row, 1, QTableWidgetItem(med.name))
+            self.tableWidget.setItem(row, 2, QTableWidgetItem(med.manufacturer))
+            self.tableWidget.setItem(row, 3, QTableWidgetItem(med.quantity))
+            self.tableWidget.setItem(row, 4, QTableWidgetItem(med.price))
+    
+    def get_current_index(self):
+        selected = self.tableWidget.selectedItems()
+        return selected[0].row() if selected else -1
+    
+    def add_record(self):
+        dialog = EditDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            med = dialog.get_data()
+            if med.name:
+                self.data.add_medication(med)
+                self.save_to_file()
+                self.load_from_file()
+    
+    def edit_record(self):
+        index = self.get_current_index()
+        if index >= 0:
+            dialog = EditDialog(self, self.data.medications[index])
+            if dialog.exec_() == QDialog.Accepted:
+                med = dialog.get_data()
+                if med.name:
+                    self.data.update_medication(index, med)
+                    self.save_to_file()
+                    self.load_from_file()
+    
+    def delete_record(self):
+        index = self.get_current_index()
+        if index >= 0:
+            self.data.remove_medication(index)
+            self.save_to_file()
+            self.load_from_file()
+    
+    def search_record(self):
+        search_text = self.searchEdit.text().lower()
+        if search_text:
+            filtered = [med for med in self.data.medications 
+                       if search_text in med.name.lower()]
+            self.update_table(filtered)
+        else:
+            self.update_table()
+    
+    def sort_records(self):
+        if self.SORT_ATTRIBUTE == "price":
+            sorted_meds = sorted(self.data.medications, 
+                               key=lambda x: float(x.price))
+            self.update_table(sorted_meds)
+    
+    def load_from_file(self):
+        try:
+            with open('data.txt', 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            self.data.medications.clear()
+            max_id = 0
+            
+            for line in lines:
+                med = Medication.from_file_string(line)
+                if med:
+                    self.data.medications.append(med)
+                    max_id = max(max_id, int(med.id))
+            
+            self.data.next_id = max_id + 1
+            self.update_table()
+        except FileNotFoundError:
+            open('data.txt', 'w').close()
+    
+    def save_to_file(self):
+        with open('data.txt', 'w', encoding='utf-8') as f:
+            for med in self.data.medications:
+                f.write(med.to_file_string() + '\n')
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = PharmacyApp()
+    window.show()
+    sys.exit(app.exec_())
