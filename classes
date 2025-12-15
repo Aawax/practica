@@ -1,0 +1,36 @@
+class Medication:
+    def __init__(self, med_id, name, manufacturer, quantity, price):
+        self.id = med_id
+        self.name = name
+        self.manufacturer = manufacturer
+        self.quantity = quantity
+        self.price = price
+    
+    def to_file_string(self):
+        return f"{self.id}&{self.name}&{self.manufacturer}&{self.quantity}&{self.price}"
+    
+    @staticmethod
+    def from_file_string(data_string):
+        parts = data_string.strip().split('&')
+        if len(parts) == 5:
+            return Medication(parts[0], parts[1], parts[2], parts[3], parts[4])
+        return None
+
+class PharmacyData:
+    def __init__(self):
+        self.medications = []
+        self.next_id = 1
+    
+    def add_medication(self, medication):
+        medication.id = str(self.next_id)
+        self.next_id += 1
+        self.medications.append(medication)
+    
+    def remove_medication(self, index):
+        if 0 <= index < len(self.medications):
+            del self.medications[index]
+    
+    def update_medication(self, index, medication):
+        if 0 <= index < len(self.medications):
+            medication.id = self.medications[index].id
+            self.medications[index] = medication
