@@ -1,0 +1,26 @@
+from PyQt5 import QtGui, QtWidgets, uic
+import sys
+
+app = QtWidgets.QApplication([])
+win = uic.loadUi("calc.ui")
+
+def btnCalculate():
+    if (win.lineEdit_a.text() != '' and 
+        win.lineEdit_b.text() != '' and 
+        win.lineEdit_c.text() != ''):
+            a = float(win.lineEdit_a.text())
+            b = float(win.lineEdit_b.text())
+            c = float(win.lineEdit_c.text())
+            
+            if c == 0:
+                win.label_result.setText("Ошибка: деление на ноль!")
+                return
+            
+            result = (a * b) + (b / c) - (a + c)
+            result_rounded = round(result, 3)            
+            win.label_result.setText(f"Результат: {result_rounded}")
+
+win.setWindowIcon(QtGui.QIcon("icon.png"))
+win.pushButton_calc.clicked.connect(btnCalculate)
+win.show()
+sys.exit(app.exec())
